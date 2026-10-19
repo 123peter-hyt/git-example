@@ -3,6 +3,7 @@
 
 规则来自仓库根目录的 README.md 和 members/README.md。
 检查不过时打印原因，并以退出码 1 结束，让 CI 失败。
+HEAD_REF 环境变量指定被检查的提交，默认为 HEAD。
 不写任何东西，不发评论，不加标签。
 """
 import os
@@ -15,6 +16,7 @@ login = os.environ["LOGIN"]
 branch = os.environ["BRANCH"]
 title = os.environ.get("PR_TITLE", "")
 body = os.environ.get("PR_BODY", "")
+head_ref = os.environ.get("HEAD_REF", "HEAD")
 
 errors = []
 warnings = []
@@ -49,7 +51,7 @@ if problem:
 if not body.strip():
     errors.append("PR 描述为空，请写明做了什么、改了哪些文件")
 
-for subject in git("log", "origin/main..HEAD", "--no-merges", "--format=%s").splitlines():
+for subject in git("log", "origin/main.." + head_ref, "--no-merges", "--format=%s").splitlines():
     problem = check_subject(subject)
     if problem:
         errors.append("commit 信息" + problem + "，现在是 " + subject)
@@ -60,7 +62,7 @@ own_folder_prefix = "members/" + login.lower() + "/"
 
 canonical_seen = False
 for line in git("-c", "core.quotepath=false", "diff", "--raw", "--no-renames",
-                "origin/main", "HEAD").splitlines():
+                "origin/main..." + head_ref).splitlines():
     if not line:
         continue
     fields, path = line[1:].split("\t", 1)
